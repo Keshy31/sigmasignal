@@ -2,9 +2,9 @@ import pandas as pd
 from datetime import time
 
 class Backtester:
-    def __init__(self, tp_pct=0.02, sl_pct=0.01):
-        self.tp_pct = tp_pct
-        self.sl_pct = sl_pct
+    def __init__(self, atr_multiplier_sl=2.0, atr_multiplier_tp=3.0):
+        self.atr_multiplier_sl = atr_multiplier_sl
+        self.atr_multiplier_tp = atr_multiplier_tp
         self.trades = []
         
     def run(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -89,10 +89,12 @@ class Backtester:
                     # Execute entry at Next Open
                     next_open = df['Open'].iloc[i+1]
                     next_time = df.index[i+1]
+                    atr_val = df['ATR'].iloc[i]  # Use ATR from signal generation time (current bar i)
                     
-                    # Define Position
-                    tp_price = next_open * (1 + self.tp_pct)
-                    sl_price = next_open * (1 - self.sl_pct)
+                    # Define Position with ATR-based SL/TP
+                    # Long only for now
+                    sl_price = next_open - (self.atr_multiplier_sl * atr_val)
+                    tp_price = next_open + (self.atr_multiplier_tp * atr_val)
                     
                     position = {
                         'entry_time': next_time,
@@ -135,7 +137,8 @@ if __name__ == "__main__":
     df = generate_signals(df, bandwidth_threshold=median_bw)
     
     # Run Backtest
-    engine = Backtester(tp_pct=0.02, sl_pct=0.01)
+    # Using new ATR params: SL=2.0 ATR, TP=3.0 ATR
+    engine = Backtester(atr_multiplier_sl=2.0, atr_multiplier_tp=3.0)
     results = engine.run(df)
     
     print("Backtest Results:")

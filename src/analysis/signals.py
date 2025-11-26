@@ -1,6 +1,6 @@
 import pandas as pd
 
-def generate_signals(df: pd.DataFrame, bandwidth_threshold: float = 0.02) -> pd.DataFrame:
+def generate_signals(df: pd.DataFrame, bandwidth_threshold: float = 0.02, adx_threshold: float = 25.0) -> pd.DataFrame:
     """
     Generates trading signals based on Trinity Strategy.
     
@@ -9,17 +9,21 @@ def generate_signals(df: pd.DataFrame, bandwidth_threshold: float = 0.02) -> pd.
        - Price < Lower BB
        - RSI < 30
        - MACD Histogram > Previous MACD Histogram (Momentum improving)
+       - Regime: ADX < Threshold (Ranging)
        
     2. Squeeze Breakout (Signal B):
        - Price > Upper BB
        - RSI > 70
        - MACD Line > Signal Line
        - Bandwidth < Threshold (Low Volatility / Squeeze)
+       - Regime: ADX > Threshold (Trending)
        
     Args:
-        df: DataFrame with indicators (BBL, BBU, RSI, MACD, MACDs, MACDh, Bandwidth).
+        df: DataFrame with indicators (BBL, BBU, RSI, MACD, MACDs, MACDh, Bandwidth, ADX).
         bandwidth_threshold: Threshold for Bandwidth to consider it a squeeze. 
                              Default 0.02 (2%) might be tight for intraday, adjust as needed.
+        adx_threshold: Threshold for ADX to distinguish between Trending and Ranging regimes.
+                             Default 25.0.
                              
     Returns:
         pd.DataFrame: DataFrame with 'Signal' column (1 for Buy, 0 for None).
@@ -28,13 +32,19 @@ def generate_signals(df: pd.DataFrame, bandwidth_threshold: float = 0.02) -> pd.
     df = df.copy()
     
     # Ensure required columns exist
-    required_cols = ['Close', 'BBL', 'BBU', 'RSI', 'MACD', 'MACDs', 'MACDh', 'Bandwidth']
+    required_cols = ['Close', 'BBL', 'BBU', 'RSI', 'MACD', 'MACDs', 'MACDh', 'Bandwidth', 'ADX']
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
         raise ValueError(f"Missing columns for signal generation: {missing}")
     
+    # --- Regime Filter ---
+    # ADX > Threshold -> Trending
+    # ADX < Threshold -> Ranging
+    is_trending = df['ADX'] > adx_threshold
+    is_ranging = df['ADX'] < adx_threshold
+    
     # --- Signal A: Mean Reversion ---
-    # Buy the dip
+    # Buy the dip in Ranging Market
     # Condition 1: Price < LowerBB (Rumble Strip)
     cond_a_1 = df['Close'] < df['BBL']
     
@@ -45,11 +55,11 @@ def generate_signals(df: pd.DataFrame, bandwidth_threshold: float = 0.02) -> pd.
     # We compare current hist with previous hist
     cond_a_3 = df['MACDh'] > df['MACDh'].shift(1)
     
-    # Combine
-    df['Signal_MeanRev'] = (cond_a_1 & cond_a_2 & cond_a_3).astype(int)
+    # Combine with Regime
+    df['Signal_MeanRev'] = (cond_a_1 & cond_a_2 & cond_a_3 & is_ranging).astype(int)
     
     # --- Signal B: Squeeze Breakout ---
-    # Buy the explosion
+    # Buy the explosion in Trending Market
     # Condition 1: Price > UpperBB
     cond_b_1 = df['Close'] > df['BBU']
     
@@ -65,7 +75,7 @@ def generate_signals(df: pd.DataFrame, bandwidth_threshold: float = 0.02) -> pd.
     # Let's check if it IS low (indicating the move is starting from a squeeze).
     cond_b_4 = df['Bandwidth'] < bandwidth_threshold
     
-    df['Signal_Breakout'] = (cond_b_1 & cond_b_2 & cond_b_3 & cond_b_4).astype(int)
+    df['Signal_Breakout'] = (cond_b_1 & cond_b_2 & cond_b_3 & cond_b_4 & is_trending).astype(int)
     
     # --- Combined Signal ---
     # Priority: If both true (rare), we buy. 

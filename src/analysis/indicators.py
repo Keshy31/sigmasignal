@@ -34,6 +34,12 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
     # 3. MACD
     df.ta.macd(fast=12, slow=26, signal=9, append=True)
 
+    # 4. ADX (Trend Strength)
+    df.ta.adx(length=14, append=True)
+
+    # 5. ATR (Volatility)
+    df.ta.atr(length=14, append=True)
+
     # Rename columns to standard names
     # We inspect columns to find the generated names
     # Expected pattern: BBL_20_2.0, RSI_14, MACD_12_26_9 etc.
@@ -55,7 +61,11 @@ def add_indicators(df: pd.DataFrame) -> pd.DataFrame:
         find_col('RSI_14'): 'RSI',
         find_col('MACD_12'): 'MACD',
         find_col('MACDs_12'): 'MACDs',
-        find_col('MACDh_12'): 'MACDh'
+        find_col('MACDh_12'): 'MACDh',
+        find_col('ADX_14'): 'ADX',
+        find_col('DMP_14'): 'DMP',
+        find_col('DMN_14'): 'DMN',
+        find_col('ATRr_14'): 'ATR'
     }
     
     # Remove None keys
