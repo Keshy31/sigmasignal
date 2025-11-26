@@ -123,6 +123,6 @@ cython_debug/
 .cursor/
 
 # Project specific (artifacts and large data)
-data/
 *.html
 
+*.csv

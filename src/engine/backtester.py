@@ -7,12 +7,13 @@ class Backtester:
         self.atr_multiplier_tp = atr_multiplier_tp
         self.trades = []
         
-    def run(self, df: pd.DataFrame) -> pd.DataFrame:
+    def run(self, df: pd.DataFrame, verbose: bool = False) -> pd.DataFrame:
         """
         Runs the backtest simulation.
         
         Args:
             df: DataFrame with 'Signal' and OHLCV data.
+            verbose: If True, prints trade details to console.
             
         Returns:
             pd.DataFrame: Trade log.
@@ -74,6 +75,8 @@ class Backtester:
                     exit_price = close
                 
                 if exit_reason:
+                    if verbose:
+                        print(f"[EXIT] {timestamp} @ {exit_price:.2f} ({exit_reason}) | PnL: {(exit_price - position['entry_price'])/position['entry_price']*100:.2f}%")
                     self._close_trade(position, timestamp, exit_price, exit_reason)
                     position = None
                     continue # Trade closed, move to next bar (we can't re-enter same bar)
@@ -95,6 +98,16 @@ class Backtester:
                     # Long only for now
                     sl_price = next_open - (self.atr_multiplier_sl * atr_val)
                     tp_price = next_open + (self.atr_multiplier_tp * atr_val)
+                    
+                    # Identify signal type for logging
+                    sig_type = "Unknown"
+                    if 'Signal_MeanRev' in df.columns and df['Signal_MeanRev'].iloc[i] == 1:
+                        sig_type = "Mean Reversion"
+                    elif 'Signal_Breakout' in df.columns and df['Signal_Breakout'].iloc[i] == 1:
+                        sig_type = "Breakout"
+                    
+                    if verbose:
+                        print(f"[ENTRY] {next_time} ({sig_type}) @ {next_open:.2f} | SL: {sl_price:.2f} | TP: {tp_price:.2f} | ATR: {atr_val:.4f}")
                     
                     position = {
                         'entry_time': next_time,

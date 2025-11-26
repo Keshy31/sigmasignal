@@ -11,8 +11,8 @@ def main():
     parser.add_argument("--ticker", type=str, default="NVDA", help="Stock Ticker (default: NVDA)")
     parser.add_argument("--interval", type=str, default="5m", help="Data Interval (default: 5m)")
     parser.add_argument("--period", type=str, default="1mo", help="Data Period (default: 1mo)")
-    parser.add_argument("--tp", type=float, default=0.02, help="Take Profit % (default: 0.02)")
-    parser.add_argument("--sl", type=float, default=0.01, help="Stop Loss % (default: 0.01)")
+    parser.add_argument("--tp", type=float, default=2.0, help="ATR Take Profit Multiplier (default: 2.0)")
+    parser.add_argument("--sl", type=float, default=2.0, help="ATR Stop Loss Multiplier (default: 2.0)")
     parser.add_argument("--bandwidth", type=float, default=None, help="Bandwidth Threshold (default: median of data)")
     
     args = parser.parse_args()
@@ -45,8 +45,8 @@ def main():
     
     # 4. Backtest Simulation
     print("Running Backtest...")
-    engine = Backtester(tp_pct=args.tp, sl_pct=args.sl)
-    trades = engine.run(df)
+    engine = Backtester(atr_multiplier_tp=args.tp, atr_multiplier_sl=args.sl)
+    trades = engine.run(df, verbose=True)
     
     if not trades.empty:
         total_pnl = trades['PnL'].sum()

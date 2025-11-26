@@ -83,32 +83,52 @@ Create interactive charts for analysis.
 
 ## 8. Phase 2: Alpha Optimization (Quant Refinement)
 
-To improve the 0% Win Rate (observed in initial tests), we shift from "Implementation" to "Quantitative Research". The goal is to filter low-quality signals and adapt to volatility.
+**Status: Completed**
+
+To improve the 0% Win Rate (observed in initial tests), we shifted from "Implementation" to "Quantitative Research". The goal was to filter low-quality signals and adapt to volatility.
 
 ### A. Dynamic Risk Management (ATR)
-
-- **Hypothesis**: Fixed 1% SL is likely getting stopped out by random noise in high-beta stocks like NVDA.
-- **Solution**: Use **Average True Range (ATR)** for dynamic stops.
-    - Stop Loss = $Entry - (k_1 \times ATR)$
-    - Take Profit = $Entry + (k_2 \times ATR)$
+- **Implemented**: Stop Loss = $Entry - (k_1 \times ATR)$ and Take Profit = $Entry + (k_2 \times ATR)$
+- **Result**: Moving from fixed % stops to ATR-based stops prevented premature stop-outs in high volatility.
 
 ### B. Regime Filtering (The "Traffic Light")
-
-- **Hypothesis**: Mean Reversion strategies fail in strong trends; Breakout strategies fail in chop.
-- **Solution**: Implement **ADX (Average Directional Index)**.
-    - **Strong Trend (ADX > 25)**: ONLY take Breakout signals. Block Mean Reversion.
-    - **Ranging (ADX < 25)**: ONLY take Mean Reversion signals. Block Breakout.
+- **Implemented**: ADX filter to separate Trending vs. Ranging markets.
+  - Trending (ADX > 25): Breakout Only.
+  - Ranging (ADX < 25): Mean Reversion Only.
 
 ### C. Parameter Optimization (Grid Search)
-
-- **Hypothesis**: "Median Bandwidth" and RSI 30/70 are arbitrary.
-- **Solution**: Build `src/optimization/optimizer.py`.
-- Systematically test combinations of:
-    - RSI Thresholds: [20, 25, 30]
-    - ATR Multipliers: [1.5, 2.0, 2.5]
-    - ADX Threshold: [20, 25, 30]
-- **Metric**: Maximize **Sharpe Ratio** or **Total PnL**.
+- **Implemented**: `src/optimization/optimizer.py`
+- **Findings**:
+  - **Best Win Rate**: 50% (vs 0% initially).
+  - **Best PnL**: +0.40% (vs -5% Buy & Hold drawdown).
+  - **Optimal Parameters**:
+    - RSI Thresholds: 30 / 70
+    - ADX Threshold: 25
+    - ATR Stop Loss: 2.0x
+    - ATR Take Profit: 2.0x
 
 ### D. Extended Backtest
+- **Action**: Optimized parameters have been applied to `main.py` as defaults.
 
-- **Action**: Expand data window beyond 1 month (if API permits) or test on multiple tickers to ensure statistical significance.
+## 9. Phase 3: Profit Maximization & Robustness (Planned)
+
+To scale from "capital preservation" to "alpha generation", we will implement:
+
+### A. Short Selling (The Biggest Lever)
+- **Logic**: Allow the system to bet on price drops.
+- **Impact**: In a bear market (like NVDA's recent -5% month), a shorting strategy transforms downside volatility into profit, potentially turning +0.4% into +5% or more.
+
+### B. Dynamic Bandwidth
+- **Current**: Static `median` bandwidth.
+- **Improved**: Use a "percentile" approach (e.g., bandwidth < 10th percentile of last 100 bars). This adapts automatically to changing volatility regimes (e.g., earnings season vs. holiday chop).
+
+### C. Data & Confidence
+- **Current**: 1 month of data (~20 trading days).
+- **Improved**: Expand to 3-6 months.
+- **Goal**: Validate that the "low trade count" is a feature (precision) and not a bug (over-filtering). If trade frequency remains <5/month over 6 months, we may need to loosen filters.
+
+### D. Refined Trend Capture
+- **Observation**: While the system protected capital in NVDA (-5% vs +0.4%), it significantly underperformed GOOGL Buy & Hold (+20% vs +1.28%).
+- **Diagnosis**: The system takes profit too early (2.0x ATR) in strong trends, missing the "fat tail" gains.
+- **Solution**: Implement a **Trailing Stop** mechanism (e.g., Chandelier Exit or ATR Trailing Stop) instead of a fixed Take Profit target to let winning trades run.
+

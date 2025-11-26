@@ -1,19 +1,19 @@
 import pandas as pd
 
-def generate_signals(df: pd.DataFrame, bandwidth_threshold: float = 0.02, adx_threshold: float = 25.0) -> pd.DataFrame:
+def generate_signals(df: pd.DataFrame, bandwidth_threshold: float = 0.02, adx_threshold: float = 25.0, rsi_lower_thresh: float = 30.0, rsi_upper_thresh: float = 70.0) -> pd.DataFrame:
     """
     Generates trading signals based on Trinity Strategy.
     
     Signals:
     1. Mean Reversion (Signal A):
        - Price < Lower BB
-       - RSI < 30
+       - RSI < rsi_lower_thresh
        - MACD Histogram > Previous MACD Histogram (Momentum improving)
        - Regime: ADX < Threshold (Ranging)
        
     2. Squeeze Breakout (Signal B):
        - Price > Upper BB
-       - RSI > 70
+       - RSI > rsi_upper_thresh
        - MACD Line > Signal Line
        - Bandwidth < Threshold (Low Volatility / Squeeze)
        - Regime: ADX > Threshold (Trending)
@@ -24,6 +24,8 @@ def generate_signals(df: pd.DataFrame, bandwidth_threshold: float = 0.02, adx_th
                              Default 0.02 (2%) might be tight for intraday, adjust as needed.
         adx_threshold: Threshold for ADX to distinguish between Trending and Ranging regimes.
                              Default 25.0.
+        rsi_lower_thresh: RSI lower threshold for Mean Reversion (Oversold). Default 30.0.
+        rsi_upper_thresh: RSI upper threshold for Breakout (Strong Momentum). Default 70.0.
                              
     Returns:
         pd.DataFrame: DataFrame with 'Signal' column (1 for Buy, 0 for None).
@@ -48,8 +50,8 @@ def generate_signals(df: pd.DataFrame, bandwidth_threshold: float = 0.02, adx_th
     # Condition 1: Price < LowerBB (Rumble Strip)
     cond_a_1 = df['Close'] < df['BBL']
     
-    # Condition 2: RSI < 30 (Oversold)
-    cond_a_2 = df['RSI'] < 30
+    # Condition 2: RSI < rsi_lower_thresh (Oversold)
+    cond_a_2 = df['RSI'] < rsi_lower_thresh
     
     # Condition 3: MACD Histogram Rising (Momentum turning up)
     # We compare current hist with previous hist
@@ -63,8 +65,8 @@ def generate_signals(df: pd.DataFrame, bandwidth_threshold: float = 0.02, adx_th
     # Condition 1: Price > UpperBB
     cond_b_1 = df['Close'] > df['BBU']
     
-    # Condition 2: RSI > 70 (Strong Momentum)
-    cond_b_2 = df['RSI'] > 70
+    # Condition 2: RSI > rsi_upper_thresh (Strong Momentum)
+    cond_b_2 = df['RSI'] > rsi_upper_thresh
     
     # Condition 3: MACD Bullish
     cond_b_3 = df['MACD'] > df['MACDs']
